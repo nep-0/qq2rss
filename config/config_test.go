@@ -11,6 +11,7 @@ func TestLoad(t *testing.T) {
 	path := filepath.Join(dir, "config.json")
 	json := `{
 		"listen_addr": ":9000",
+		"onebot_listen_addr": ":9001",
 		"feed": {
 			"title": "feed",
 			"link": "https://example.com",
@@ -19,8 +20,7 @@ func TestLoad(t *testing.T) {
 			"author_email": "a@example.com",
 			"storage_path": "store.json",
 			"max_items": 20,
-			"group_id": 123,
-			"onebot_token": "test-token"
+			"group_id": 123
 		}
 	}`
 	if err := os.WriteFile(path, []byte(json), 0o644); err != nil {
@@ -34,6 +34,9 @@ func TestLoad(t *testing.T) {
 	if got, want := cfg.ListenAddr, ":9000"; got != want {
 		t.Fatalf("unexpected listen addr: got %q want %q", got, want)
 	}
+	if got, want := cfg.OneBotListenAddr, ":9001"; got != want {
+		t.Fatalf("unexpected onebot listen addr: got %q want %q", got, want)
+	}
 	if got, want := cfg.Feed.GroupID, int64(123); got != want {
 		t.Fatalf("unexpected group id: got %d want %d", got, want)
 	}
@@ -44,11 +47,11 @@ func TestLoadValidationFailure(t *testing.T) {
 	path := filepath.Join(dir, "config.json")
 	json := `{
 		"listen_addr": ":9000",
+		"onebot_listen_addr": "",
 		"feed": {
 			"storage_path": "store.json",
 			"max_items": 0,
-			"group_id": 0,
-			"onebot_token": ""
+			"group_id": 0
 		}
 	}`
 	if err := os.WriteFile(path, []byte(json), 0o644); err != nil {

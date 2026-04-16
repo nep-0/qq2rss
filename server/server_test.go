@@ -121,7 +121,6 @@ func TestOneBotAcceptsGroupLinkMessage(t *testing.T) {
 		StoragePath: filepath.Join(t.TempDir(), "feed-state.json"),
 		MaxItems:    5,
 		GroupID:     123456,
-		OneBotToken: "token-123",
 	}
 
 	s, err := NewServer(cfg)
@@ -153,9 +152,8 @@ func TestOneBotAcceptsGroupLinkMessage(t *testing.T) {
 	}
 
 	req := httptest.NewRequest(http.MethodPost, "/onebot", bytes.NewReader(body))
-	req.Header.Set("Authorization", "Bearer token-123")
 	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, req)
+	s.OneBotHandler().ServeHTTP(rec, req)
 
 	if got, want := rec.Code, http.StatusAccepted; got != want {
 		t.Fatalf("unexpected response code: got %d want %d", got, want)
@@ -184,7 +182,6 @@ func TestOneBotIgnoresWrongGroupOrNonLink(t *testing.T) {
 		StoragePath: filepath.Join(t.TempDir(), "feed-state.json"),
 		MaxItems:    5,
 		GroupID:     123456,
-		OneBotToken: "token-123",
 	}
 
 	s, err := NewServer(cfg)
@@ -203,9 +200,8 @@ func TestOneBotIgnoresWrongGroupOrNonLink(t *testing.T) {
 		t.Fatalf("Marshal(wrongGroup) returned error: %v", err)
 	}
 	reqWrong := httptest.NewRequest(http.MethodPost, "/onebot", bytes.NewReader(wrongBody))
-	reqWrong.Header.Set("X-OneBot-Token", "token-123")
 	recWrong := httptest.NewRecorder()
-	s.Handler().ServeHTTP(recWrong, reqWrong)
+	s.OneBotHandler().ServeHTTP(recWrong, reqWrong)
 	if got, want := recWrong.Code, http.StatusNoContent; got != want {
 		t.Fatalf("unexpected status for wrong group: got %d want %d", got, want)
 	}
@@ -221,54 +217,13 @@ func TestOneBotIgnoresWrongGroupOrNonLink(t *testing.T) {
 		t.Fatalf("Marshal(nonLink) returned error: %v", err)
 	}
 	reqNonLink := httptest.NewRequest(http.MethodPost, "/onebot", bytes.NewReader(nonLinkBody))
-	reqNonLink.Header.Set("X-OneBot-Token", "token-123")
 	recNonLink := httptest.NewRecorder()
-	s.Handler().ServeHTTP(recNonLink, reqNonLink)
+	s.OneBotHandler().ServeHTTP(recNonLink, reqNonLink)
 	if got, want := recNonLink.Code, http.StatusNoContent; got != want {
 		t.Fatalf("unexpected status for non-link message: got %d want %d", got, want)
 	}
 
 	if got, want := len(s.Items()), 0; got != want {
 		t.Fatalf("unexpected item count after ignored messages: got %d want %d", got, want)
-	}
-}
-
-func TestOneBotRejectsInvalidToken(t *testing.T) {
-	cfg := Config{
-		Title:       "Test feed",
-		Link:        "http://localhost",
-		Description: "test",
-		StoragePath: filepath.Join(t.TempDir(), "feed-state.json"),
-		MaxItems:    5,
-		GroupID:     123456,
-		OneBotToken: "token-123",
-	}
-
-	s, err := NewServer(cfg)
-	if err != nil {
-		t.Fatalf("NewServer returned error: %v", err)
-	}
-
-	payload := map[string]interface{}{
-		"post_type":    "message",
-		"message_type": "group",
-		"group_id":     123456,
-		"raw_message":  "https://example.com/a",
-	}
-	body, err := json.Marshal(payload)
-	if err != nil {
-		t.Fatalf("Marshal returned error: %v", err)
-	}
-
-	req := httptest.NewRequest(http.MethodPost, "/onebot", bytes.NewReader(body))
-	req.Header.Set("Authorization", "Bearer wrong-token")
-	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, req)
-
-	if got, want := rec.Code, http.StatusUnauthorized; got != want {
-		t.Fatalf("unexpected response code: got %d want %d", got, want)
-	}
-	if got, want := len(s.Items()), 0; got != want {
-		t.Fatalf("unexpected item count after unauthorized request: got %d want %d", got, want)
 	}
 }

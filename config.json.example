@@ -1,5 +1,6 @@
 {
   "listen_addr": ":8080",
+  "onebot_listen_addr": ":8081",
   "feed": {
     "title": "UESTC LUG",
     "link": "https://qm.qq.com/q/itSCyURda8",
@@ -8,7 +9,6 @@
     "author_email": "placeholder@example.com",
     "storage_path": "store.json",
     "max_items": 20,
-    "group_id": 123456,
-    "onebot_token": "change-me-strong-random-token"
+    "group_id": 123456
   }
 }

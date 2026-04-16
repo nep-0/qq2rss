@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"qq2rss/config"
 	"qq2rss/server"
@@ -26,13 +27,20 @@ func main() {
 		StoragePath: cfg.Feed.StoragePath,
 		MaxItems:    cfg.Feed.MaxItems,
 		GroupID:     cfg.Feed.GroupID,
-		OneBotToken: cfg.Feed.OneBotToken,
 	})
 	if err != nil {
 		panic(err)
 	}
 
-	if err := s.Start(cfg.ListenAddr); err != nil {
-		panic(err)
+	errCh := make(chan error, 2)
+	go func() {
+		errCh <- s.Start(cfg.ListenAddr)
+	}()
+	go func() {
+		errCh <- s.StartOneBot(cfg.OneBotListenAddr)
+	}()
+
+	if err := <-errCh; err != nil {
+		panic(fmt.Errorf("server stopped: %w", err))
 	}
 }

@@ -24,7 +24,6 @@ type Config struct {
 	StoragePath string
 	MaxItems    int
 	GroupID     int64
-	OneBotToken string
 }
 
 // Item is a persisted feed item.
@@ -45,10 +44,11 @@ type diskState struct {
 
 // Server persists feed items on disk and serves them as RSS.
 type Server struct {
-	mu         sync.RWMutex
-	cfg        Config
-	items      []Item
-	httpServer *http.Server
+	mu               sync.RWMutex
+	cfg              Config
+	items            []Item
+	httpServer       *http.Server
+	oneBotHTTPServer *http.Server
 }
 
 // NewServer loads persisted state and returns a ready-to-use server.
@@ -158,17 +158,23 @@ func (s *Server) RSS() (string, error) {
 	return feed.ToRss()
 }
 
-// Handler returns an HTTP handler with endpoints for RSS and adding items.
+// Handler returns an HTTP handler with public endpoints.
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/rss", s.handleRSS)
-	if s.cfg.GroupID > 0 {
-		mux.HandleFunc("/onebot", s.handleOneBot)
-	}
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
+	return mux
+}
+
+// OneBotHandler returns an HTTP handler for OneBot webhook ingestion.
+func (s *Server) OneBotHandler() http.Handler {
+	mux := http.NewServeMux()
+	if s.cfg.GroupID > 0 {
+		mux.HandleFunc("/onebot", s.handleOneBot)
+	}
 	return mux
 }
 
@@ -197,17 +203,52 @@ func (s *Server) Start(addr string) error {
 	return err
 }
 
+// StartOneBot runs the OneBot webhook server and blocks until it stops.
+func (s *Server) StartOneBot(addr string) error {
+	if addr == "" {
+		addr = ":8081"
+	}
+
+	s.mu.Lock()
+	if s.oneBotHTTPServer != nil {
+		s.mu.Unlock()
+		return errors.New("onebot server already started")
+	}
+	s.oneBotHTTPServer = &http.Server{
+		Addr:    addr,
+		Handler: s.OneBotHandler(),
+	}
+	oneBotSrv := s.oneBotHTTPServer
+	s.mu.Unlock()
+
+	err := oneBotSrv.ListenAndServe()
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
+	}
+	return err
+}
+
 // Shutdown gracefully stops a running server.
 func (s *Server) Shutdown(ctx context.Context) error {
 	s.mu.Lock()
 	srv := s.httpServer
+	oneBotSrv := s.oneBotHTTPServer
 	s.httpServer = nil
+	s.oneBotHTTPServer = nil
 	s.mu.Unlock()
 
-	if srv == nil {
-		return nil
+	if srv != nil {
+		if err := srv.Shutdown(ctx); err != nil {
+			return err
+		}
 	}
-	return srv.Shutdown(ctx)
+	if oneBotSrv != nil {
+		if err := oneBotSrv.Shutdown(ctx); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (s *Server) handleRSS(w http.ResponseWriter, r *http.Request) {
@@ -241,9 +282,6 @@ func normalizeConfig(cfg Config) (Config, error) {
 	}
 	if cfg.Description == "" {
 		cfg.Description = "persistent rss feed"
-	}
-	if cfg.GroupID > 0 && cfg.OneBotToken == "" {
-		return Config{}, errors.New("onebot token is required when group id is configured")
 	}
 	return cfg, nil
 }

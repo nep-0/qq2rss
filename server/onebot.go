@@ -1,7 +1,6 @@
 package server
 
 import (
-	"crypto/subtle"
 	"encoding/json"
 	"html"
 	"io"
@@ -70,10 +69,6 @@ func defaultFetchLinkMetadata(link string) (linkMetadata, error) {
 func (s *Server) handleOneBot(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-	if !isAuthorizedOneBotRequest(r, s.cfg.OneBotToken) {
-		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
@@ -250,31 +245,4 @@ func chooseNonEmpty(primary string, fallback string) string {
 		return strings.TrimSpace(primary)
 	}
 	return strings.TrimSpace(fallback)
-}
-
-func isAuthorizedOneBotRequest(r *http.Request, configuredToken string) bool {
-	reqToken := extractRequestToken(r)
-	if reqToken == "" || configuredToken == "" {
-		return false
-	}
-
-	reqBytes := []byte(reqToken)
-	cfgBytes := []byte(configuredToken)
-	if len(reqBytes) != len(cfgBytes) {
-		return false
-	}
-
-	return subtle.ConstantTimeCompare(reqBytes, cfgBytes) == 1
-}
-
-func extractRequestToken(r *http.Request) string {
-	auth := strings.TrimSpace(r.Header.Get("Authorization"))
-	if strings.HasPrefix(strings.ToLower(auth), "bearer ") {
-		token := strings.TrimSpace(auth[len("Bearer "):])
-		if token != "" {
-			return token
-		}
-	}
-
-	return strings.TrimSpace(r.Header.Get("X-OneBot-Token"))
 }
