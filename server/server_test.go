@@ -128,6 +128,14 @@ func TestOneBotAcceptsGroupLinkMessage(t *testing.T) {
 		t.Fatalf("NewServer returned error: %v", err)
 	}
 
+	originalFetcher := fetchLinkMetadata
+	fetchLinkMetadata = func(_ string) (linkMetadata, error) {
+		return linkMetadata{Title: "Meta Title", Description: "Meta Description"}, nil
+	}
+	t.Cleanup(func() {
+		fetchLinkMetadata = originalFetcher
+	})
+
 	payload := map[string]interface{}{
 		"post_type":    "message",
 		"message_type": "group",
@@ -157,6 +165,12 @@ func TestOneBotAcceptsGroupLinkMessage(t *testing.T) {
 	}
 	if got, want := items[0].Link, "https://example.com/a"; got != want {
 		t.Fatalf("unexpected item link: got %q want %q", got, want)
+	}
+	if got, want := items[0].Title, "Meta Title"; got != want {
+		t.Fatalf("unexpected item title: got %q want %q", got, want)
+	}
+	if got, want := items[0].Description, "Meta Description"; got != want {
+		t.Fatalf("unexpected item description: got %q want %q", got, want)
 	}
 }
 
