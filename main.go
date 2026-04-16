@@ -1,41 +1,38 @@
 package main
 
 import (
+	"os"
+	"qq2rss/config"
 	"qq2rss/server"
-	"time"
-
-	"github.com/google/uuid"
 )
 
 func main() {
+	configPath := "config.json"
+	if len(os.Args) > 1 {
+		configPath = os.Args[1]
+	}
+
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		panic(err)
+	}
+
 	s, err := server.NewServer(server.Config{
-		Title:       "UESTC LUG",
-		Link:        "https://qm.qq.com/q/itSCyURda8",
-		Description: "UESTC LUG QQ group links shared",
-		AuthorName:  "UESTC LUG",
-		AuthorEmail: "placeholder@example.com",
-		StoragePath: "store.json",
-		MaxItems:    20,
-		GroupID:     648895365,
+		Title:       cfg.Feed.Title,
+		Link:        cfg.Feed.Link,
+		Description: cfg.Feed.Description,
+		AuthorName:  cfg.Feed.AuthorName,
+		AuthorEmail: cfg.Feed.AuthorEmail,
+		StoragePath: cfg.Feed.StoragePath,
+		MaxItems:    cfg.Feed.MaxItems,
+		GroupID:     cfg.Feed.GroupID,
+		OneBotToken: cfg.Feed.OneBotToken,
 	})
 	if err != nil {
 		panic(err)
 	}
 
-	id, err := uuid.NewV7()
-	if err != nil {
+	if err := s.Start(cfg.ListenAddr); err != nil {
 		panic(err)
 	}
-	s.AddItem(server.Item{
-		ID:          id.String(),
-		Title:       "test",
-		Link:        "https://qm.qq.com/q/itSCyURda8",
-		Description: "test description",
-		Content:     "test content",
-		AuthorName:  "Test Author",
-		AuthorEmail: "placeholder@example.com",
-		Created:     time.Now(),
-	})
-
-	s.Start(":8080")
 }

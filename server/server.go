@@ -24,6 +24,7 @@ type Config struct {
 	StoragePath string
 	MaxItems    int
 	GroupID     int64
+	OneBotToken string
 }
 
 // Item is a persisted feed item.
@@ -240,6 +241,9 @@ func normalizeConfig(cfg Config) (Config, error) {
 	}
 	if cfg.Description == "" {
 		cfg.Description = "persistent rss feed"
+	}
+	if cfg.GroupID > 0 && cfg.OneBotToken == "" {
+		return Config{}, errors.New("onebot token is required when group id is configured")
 	}
 	return cfg, nil
 }
