@@ -23,6 +23,7 @@ type Config struct {
 	AuthorEmail string
 	StoragePath string
 	MaxItems    int
+	GroupID     int64
 }
 
 // Item is a persisted feed item.
@@ -160,6 +161,9 @@ func (s *Server) RSS() (string, error) {
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/rss", s.handleRSS)
+	if s.cfg.GroupID > 0 {
+		mux.HandleFunc("/onebot", s.handleOneBot)
+	}
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))

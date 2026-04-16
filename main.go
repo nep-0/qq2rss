@@ -16,6 +16,7 @@ func main() {
 		AuthorEmail: "placeholder@example.com",
 		StoragePath: "store.json",
 		MaxItems:    20,
+		GroupID:     648895365,
 	})
 	if err != nil {
 		panic(err)
