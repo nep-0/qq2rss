@@ -172,6 +172,10 @@ func extractFirstLink(text string) (string, bool) {
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
 		return "", false
 	}
+	// exclude qq image links
+	if parsed.Host == "multimedia.nt.qq.com.cn" || parsed.Host == "gchat.qpic.cn" {
+		return "", false
+	}
 	return parsed.String(), true
 }
 
